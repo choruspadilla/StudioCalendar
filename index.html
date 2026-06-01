@@ -166,75 +166,82 @@ h1{
 
 <script>
 
-let eventsData=[];
+const scheduleBtn = document.getElementById('scheduleBtn');
+const calendarBtn = document.getElementById('calendarBtn');
+const scheduleView = document.getElementById('scheduleView');
+const calendarView = document.getElementById('calendarView');
 
 fetch('events.json')
-.then(r=>r.json())
-.then(events=>{
+  .then(response => response.json())
+  .then(events => {
 
-  eventsData = events;
+    buildSchedule(events);
+    buildCalendar(events);
 
-  buildSchedule(events);
-  buildCalendar(events);
+  })
+  .catch(error => {
 
-});
+    scheduleView.innerHTML =
+      '<p>Unable to load schedule.</p>';
+
+    console.error(error);
+
+  });
 
 function buildSchedule(events){
 
-  const container=document.getElementById('scheduleView');
-
-  const grouped={};
+  const grouped = {};
 
   events
-    .sort((a,b)=>new Date(a.start)-new Date(b.start))
-    .forEach(event=>{
+    .sort((a,b) => new Date(a.start) - new Date(b.start))
+    .forEach(event => {
 
-      const d=new Date(event.start);
-
-      const key=d.toDateString();
+      const date = new Date(event.start);
+      const key = date.toDateString();
 
       if(!grouped[key]){
-        grouped[key]=[];
+        grouped[key] = [];
       }
 
       grouped[key].push(event);
 
     });
 
-  Object.keys(grouped).forEach(day=>{
+  Object.keys(grouped).forEach(day => {
 
-    const group=document.createElement('div');
-    group.className='day-group';
+    const group = document.createElement('div');
+    group.className = 'day-group';
 
-    const heading=document.createElement('div');
-    heading.className='day-label';
+    const heading = document.createElement('div');
+    heading.className = 'day-label';
 
-    heading.textContent=
+    heading.textContent =
       new Date(day).toLocaleDateString(
         'en-US',
         {
           weekday:'long',
           month:'long',
           day:'numeric'
-        });
+        }
+      );
 
     group.appendChild(heading);
 
-    grouped[day].forEach(event=>{
+    grouped[day].forEach(event => {
 
-      const start=new Date(event.start);
-      const end=new Date(event.end);
+      const start = new Date(event.start);
+      const end = new Date(event.end);
 
-      const item=document.createElement('div');
-      item.className='event';
+      const item = document.createElement('div');
+      item.className = 'event';
 
-      item.innerHTML=        <div class="time">           ${start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}         </div>          <div>           <div class="title">${event.title}</div>            <div class="range">             ${start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}             –             ${end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}           </div>         </div>      ;
+      item.innerHTML =         <div class="time">           ${start.toLocaleTimeString([], {             hour:'numeric',             minute:'2-digit'           })}         </div>          <div>           <div class="title">${event.title}</div>            <div class="range">             ${start.toLocaleTimeString([], {               hour:'numeric',               minute:'2-digit'             })}             –             ${end.toLocaleTimeString([], {               hour:'numeric',               minute:'2-digit'             })}           </div>         </div>      ;
 
       group.appendChild(item);
 
     });
 
-    container.appendChild(group);
+    scheduleView.appendChild(group);
 
   });
 
@@ -242,7 +249,7 @@ function buildSchedule(events){
 
 function buildCalendar(events){
 
-  const calendar=new FullCalendar.Calendar(
+  const calendar = new FullCalendar.Calendar(
     document.getElementById('calendar'),
     {
       initialView:'dayGridMonth',
@@ -254,25 +261,25 @@ function buildCalendar(events){
 
 }
 
-scheduleBtn.onclick=()=>{
+scheduleBtn.addEventListener('click', () => {
 
   scheduleBtn.classList.add('active');
   calendarBtn.classList.remove('active');
 
-  scheduleView.style.display='block';
-  calendarView.style.display='none';
+  scheduleView.style.display = 'block';
+  calendarView.style.display = 'none';
 
-};
+});
 
-calendarBtn.onclick=()=>{
+calendarBtn.addEventListener('click', () => {
 
   calendarBtn.classList.add('active');
   scheduleBtn.classList.remove('active');
 
-  scheduleView.style.display='none';
-  calendarView.style.display='block';
+  scheduleView.style.display = 'none';
+  calendarView.style.display = 'block';
 
-};
+});
 
 </script>
 
