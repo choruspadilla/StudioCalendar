@@ -30,27 +30,67 @@ button {
 <div id="status"></div>
 
 <div id="calendar"></div>
-
 <script>
-console.log("SCRIPT LOADED");
-
-window.onload = function () {
-
-  console.log("WINDOW READY");
-
-  const btn = document.getElementById("loginBtn");
-
-  if (!btn) {
-    console.log("BUTTON NOT FOUND");
-    return;
+const msalConfig = {
+  auth: {
+    clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
+    authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
+    redirectUri: "https://choruspadilla.github.io/StudioCalendar/"
+  },
+  cache: {
+    cacheLocation: "localStorage",
+    storeAuthStateInCookie: true
   }
-
-  btn.addEventListener("click", function () {
-    console.log("CLICK FIRED");
-    alert("CLICK WORKS");
-  });
-
 };
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+const loginRequest = {
+  scopes: ["User.Read", "Calendars.Read"]
+};
+
+function init() {
+
+  console.log("INIT RUNNING");
+
+  msalInstance.handleRedirectPromise()
+    .then(result => {
+
+      console.log("REDIRECT RESULT:", result);
+
+      if (result?.account) {
+        msalInstance.setActiveAccount(result.account);
+        loadCalendar();
+        return;
+      }
+
+      const accounts = msalInstance.getAllAccounts();
+
+      if (accounts.length > 0) {
+        msalInstance.setActiveAccount(accounts[0]);
+        loadCalendar();
+      }
+
+    })
+    .catch(err => {
+      console.error("AUTH ERROR:", err);
+    });
+
+}
+
+document.getElementById("loginBtn").onclick = () => {
+  console.log("LOGIN CLICK");
+  msalInstance.loginRedirect(loginRequest);
+};
+
+async function loadCalendar() {
+  document.getElementById("status").innerText = "Logged in (token step next)";
+
+  const account = msalInstance.getActiveAccount();
+  console.log("ACCOUNT:", account);
+}
+
+init();
 </script>
 
 </body>
