@@ -6,15 +6,16 @@
 
 <title>Studio Schedule</title>
 
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js"></script>
 
 <style>
 
 :root{
-  --accent:#cc2229;
-  --line:#e7e7e7;
-  --text:#111;
+  --red:#cc2229;
+  --text:#000;
+  --secondary:#6e6e73;
+  --line:#e5e5e7;
+  --pill:#f5f5f7;
 }
 
 *{
@@ -23,109 +24,143 @@
 
 body{
   margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   background:#fff;
   color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
 }
 
 .container{
-  max-width:1000px;
+  max-width:1200px;
   margin:auto;
-  padding:40px 24px 80px;
+  padding:48px 32px 80px;
 }
 
 h1{
+  margin:0;
   font-size:96px;
-  line-height:.9;
-  font-weight:900;
+  line-height:.88;
+  font-weight:650;
   letter-spacing:-4px;
-  margin:0 0 32px;
 }
 
 .segment{
+  margin-top:40px;
+  margin-bottom:60px;
   display:inline-flex;
-  background:#f2f2f2;
+  background:var(--pill);
   border-radius:999px;
   padding:4px;
-  margin-bottom:48px;
 }
 
 .segment button{
   border:none;
-  background:transparent;
-  padding:12px 22px;
-  border-radius:999px;
-  font-size:16px;
-  font-weight:600;
+  background:none;
   cursor:pointer;
+  padding:14px 28px;
+  border-radius:999px;
+  font-size:18px;
+  font-weight:600;
 }
 
 .segment button.active{
-  background:#fff;
-  box-shadow:0 1px 4px rgba(0,0,0,.1);
-}
-
-.day-group{
-  margin-bottom:50px;
-}
-
-.day-label{
-  font-size:34px;
-  font-weight:800;
-  margin-bottom:20px;
-}
-
-.event{
-  display:grid;
-  grid-template-columns:140px 1fr;
-  gap:24px;
-  padding:18px 0;
-  border-top:1px solid var(--line);
-}
-
-.time{
-  font-size:15px;
-  font-weight:700;
-  color:#666;
-}
-
-.title{
-  font-size:22px;
-  font-weight:700;
-}
-
-.range{
-  margin-top:5px;
-  color:#666;
-}
-
-#accent{
-  height:8px;
-  background:var(--accent);
-  margin-top:40px;
+  background:white;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.08),
+    0 2px 8px rgba(0,0,0,.08);
 }
 
 #calendarView{
   display:none;
 }
 
+.day-group{
+  margin-bottom:48px;
+}
+
+.day-label{
+  font-size:42px;
+  font-weight:650;
+  letter-spacing:-1px;
+  margin-bottom:16px;
+}
+
+.event{
+  display:grid;
+  grid-template-columns:160px 1fr;
+  gap:28px;
+  padding:18px 0;
+  border-top:1px solid var(--line);
+}
+
+.time{
+  color:var(--secondary);
+  font-weight:600;
+  font-size:16px;
+}
+
+.title{
+  font-size:28px;
+  font-weight:650;
+  letter-spacing:-0.5px;
+}
+
+.range{
+  margin-top:6px;
+  color:var(--secondary);
+  font-size:16px;
+}
+
+.fc{
+  width:100%;
+}
+
+.fc-toolbar{
+  margin-bottom:24px !important;
+}
+
 .fc-toolbar-title{
-  font-size:24px !important;
+  font-size:42px !important;
+  font-weight:650 !important;
+  letter-spacing:-1px;
 }
 
 .fc-button{
-  background:var(--accent) !important;
+  background:var(--red) !important;
   border:none !important;
+}
+
+.fc-button:hover{
+  opacity:.9;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th{
+  border:1px solid var(--line);
+}
+
+.fc-scrollgrid{
+  border:1px solid var(--line) !important;
+}
+
+.fc-daygrid-day-number{
+  color:#000;
+  text-decoration:none;
 }
 
 .fc-daygrid-event{
-  background:var(--accent) !important;
+  background:var(--red) !important;
   border:none !important;
+  padding:2px 4px;
+}
+
+#accent{
+  margin-top:40px;
+  height:8px;
+  background:var(--red);
 }
 
 .empty{
-  color:#888;
-  font-size:18px;
+  color:var(--secondary);
 }
 
 @media(max-width:700px){
@@ -134,25 +169,28 @@ h1{
     font-size:58px;
   }
 
-  .event{
-    grid-template-columns:1fr;
-    gap:8px;
+  .day-label{
+    font-size:30px;
   }
 
-  .day-label{
-    font-size:26px;
+  .event{
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .title{
+    font-size:22px;
   }
 
 }
 
 </style>
 </head>
-
 <body>
 
 <div class="container">
 
-<h1>Studio<br>Schedule </h1>
+<h1>Studio<br>Schedule</h1>
 
 <div class="segment">
   <button id="scheduleBtn" class="active">Schedule</button>
@@ -178,31 +216,30 @@ const scheduleView = document.getElementById('scheduleView');
 const calendarView = document.getElementById('calendarView');
 
 fetch('./events.json')
-  .then(response => response.json())
-  .then(events => {
+.then(response => response.json())
+.then(events => {
 
-    buildSchedule(events);
-    buildCalendar(events);
+  buildSchedule(events);
+  buildCalendar(events);
 
-  })
-  .catch(error => {
+})
+.catch(error => {
 
-    console.error(error);
+  console.error(error);
 
-    scheduleView.innerHTML =
-      '<div class="empty">Unable to load schedule data.</div>';
+  scheduleView.innerHTML =
+    '<p class="empty">Unable to load events.</p>';
 
-  });
+});
 
 function buildSchedule(events){
 
   if(events.length === 0){
 
     scheduleView.innerHTML =
-      '<div class="empty">No events scheduled.</div>';
+      '<p class="empty">No upcoming events.</p>';
 
     return;
-
   }
 
   const grouped = {};
@@ -211,7 +248,8 @@ function buildSchedule(events){
     .sort((a,b)=>new Date(a.start)-new Date(b.start))
     .forEach(event=>{
 
-      const key = new Date(event.start).toDateString();
+      const key =
+        new Date(event.start).toDateString();
 
       if(!grouped[key]){
         grouped[key] = [];
@@ -223,10 +261,14 @@ function buildSchedule(events){
 
   Object.keys(grouped).forEach(day=>{
 
-    const group = document.createElement('div');
+    const group =
+      document.createElement('div');
+
     group.className = 'day-group';
 
-    const heading = document.createElement('div');
+    const heading =
+      document.createElement('div');
+
     heading.className = 'day-label';
 
     heading.textContent =
@@ -243,30 +285,37 @@ function buildSchedule(events){
 
     grouped[day].forEach(event=>{
 
-      const start = new Date(event.start);
-      const end = new Date(event.end);
+      const start =
+        new Date(event.start);
 
-      const item = document.createElement('div');
+      const end =
+        new Date(event.end);
+
+      const item =
+        document.createElement('div');
+
       item.className = 'event';
 
       item.innerHTML = `
         <div class="time">
-          ${start.toLocaleTimeString([], {
+          ${start.toLocaleTimeString([],{
             hour:'numeric',
             minute:'2-digit'
           })}
         </div>
 
         <div>
-          <div class="title">${event.title}</div>
+          <div class="title">
+            ${event.title}
+          </div>
 
           <div class="range">
-            ${start.toLocaleTimeString([], {
+            ${start.toLocaleTimeString([],{
               hour:'numeric',
               minute:'2-digit'
             })}
             –
-            ${end.toLocaleTimeString([], {
+            ${end.toLocaleTimeString([],{
               hour:'numeric',
               minute:'2-digit'
             })}
@@ -286,35 +335,37 @@ function buildSchedule(events){
 
 function buildCalendar(events){
 
-  const calendar = new FullCalendar.Calendar(
-    document.getElementById('calendar'),
-    {
-      initialView:'dayGridMonth',
-      events:events
-    }
-  );
+  const calendar =
+    new FullCalendar.Calendar(
+      document.getElementById('calendar'),
+      {
+        initialView:'dayGridMonth',
+        height:'auto',
+        events:events
+      }
+    );
 
   calendar.render();
 
 }
 
-scheduleBtn.addEventListener('click', ()=>{
+scheduleBtn.addEventListener('click',()=>{
 
   scheduleBtn.classList.add('active');
   calendarBtn.classList.remove('active');
 
-  scheduleView.style.display = 'block';
-  calendarView.style.display = 'none';
+  scheduleView.style.display='block';
+  calendarView.style.display='none';
 
 });
 
-calendarBtn.addEventListener('click', ()=>{
+calendarBtn.addEventListener('click',()=>{
 
   calendarBtn.classList.add('active');
   scheduleBtn.classList.remove('active');
 
-  scheduleView.style.display = 'none';
-  calendarView.style.display = 'block';
+  scheduleView.style.display='none';
+  calendarView.style.display='block';
 
 });
 
