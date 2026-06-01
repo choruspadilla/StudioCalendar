@@ -1,44 +1,279 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Studio Calendar</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Studio Schedule</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js"></script>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  margin: 40px;
+
+:root{
+  --accent:#cc2229;
+  --line:#e8e8e8;
+  --text:#111;
 }
 
-#calendar {
-  max-width: 1200px;
-  margin: 0 auto;
+*{
+  box-sizing:border-box;
 }
+
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#fff;
+  color:var(--text);
+}
+
+.container{
+  max-width:1000px;
+  margin:auto;
+  padding:40px 24px 80px;
+}
+
+h1{
+  font-size:72px;
+  line-height:.9;
+  font-weight:900;
+  letter-spacing:-2px;
+  margin:0 0 32px;
+}
+
+.segment{
+  display:inline-flex;
+  background:#f3f3f3;
+  border-radius:999px;
+  padding:4px;
+  margin-bottom:40px;
+}
+
+.segment button{
+  border:none;
+  background:transparent;
+  padding:10px 18px;
+  border-radius:999px;
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.segment button.active{
+  background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+.day-group{
+  margin-bottom:48px;
+}
+
+.day-label{
+  font-size:32px;
+  font-weight:800;
+  margin-bottom:24px;
+}
+
+.event{
+  display:grid;
+  grid-template-columns:120px 1fr;
+  gap:20px;
+  padding:18px 0;
+  border-top:1px solid var(--line);
+}
+
+.time{
+  font-size:16px;
+  font-weight:700;
+  color:#666;
+}
+
+.title{
+  font-size:22px;
+  font-weight:700;
+}
+
+.range{
+  margin-top:4px;
+  color:#666;
+}
+
+#accent{
+  height:8px;
+  background:var(--accent);
+  margin-top:40px;
+}
+
+#calendarView{
+  display:none;
+}
+
+.fc-toolbar-title{
+  font-size:24px !important;
+}
+
+.fc-button{
+  background:var(--accent)!important;
+  border:none!important;
+}
+
+.fc-daygrid-event{
+  background:var(--accent)!important;
+  border:none!important;
+}
+
+@media(max-width:700px){
+
+  h1{
+    font-size:48px;
+  }
+
+  .event{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .day-label{
+    font-size:24px;
+  }
+
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>Studio Calendar</h1>
+<div class="container">
 
-<div id="calendar"></div>
+<h1>Studio<br>Schedule.</h1>
+
+<div class="segment">
+  <button id="scheduleBtn" class="active">Schedule</button>
+  <button id="calendarBtn">Calendar</button>
+</div>
+
+<div id="scheduleView"></div>
+
+<div id="calendarView">
+  <div id="calendar"></div>
+</div>
+
+<div id="accent"></div>
+
+</div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
 
-  const calendar = new FullCalendar.Calendar(
+let eventsData=[];
+
+fetch('events.json')
+.then(r=>r.json())
+.then(events=>{
+
+  eventsData = events;
+
+  buildSchedule(events);
+  buildCalendar(events);
+
+});
+
+function buildSchedule(events){
+
+  const container=document.getElementById('scheduleView');
+
+  const grouped={};
+
+  events
+    .sort((a,b)=>new Date(a.start)-new Date(b.start))
+    .forEach(event=>{
+
+      const d=new Date(event.start);
+
+      const key=d.toDateString();
+
+      if(!grouped[key]){
+        grouped[key]=[];
+      }
+
+      grouped[key].push(event);
+
+    });
+
+  Object.keys(grouped).forEach(day=>{
+
+    const group=document.createElement('div');
+    group.className='day-group';
+
+    const heading=document.createElement('div');
+    heading.className='day-label';
+
+    heading.textContent=
+      new Date(day).toLocaleDateString(
+        'en-US',
+        {
+          weekday:'long',
+          month:'long',
+          day:'numeric'
+        });
+
+    group.appendChild(heading);
+
+    grouped[day].forEach(event=>{
+
+      const start=new Date(event.start);
+      const end=new Date(event.end);
+
+      const item=document.createElement('div');
+      item.className='event';
+
+      item.innerHTML=        <div class="time">           ${start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}         </div>          <div>           <div class="title">${event.title}</div>            <div class="range">             ${start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}             –             ${end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}           </div>         </div>      ;
+
+      group.appendChild(item);
+
+    });
+
+    container.appendChild(group);
+
+  });
+
+}
+
+function buildCalendar(events){
+
+  const calendar=new FullCalendar.Calendar(
     document.getElementById('calendar'),
     {
-      initialView: 'dayGridMonth',
-      events: 'events.json'
+      initialView:'dayGridMonth',
+      events:events
     }
   );
 
   calendar.render();
-});
+
+}
+
+scheduleBtn.onclick=()=>{
+
+  scheduleBtn.classList.add('active');
+  calendarBtn.classList.remove('active');
+
+  scheduleView.style.display='block';
+  calendarView.style.display='none';
+
+};
+
+calendarBtn.onclick=()=>{
+
+  calendarBtn.classList.add('active');
+  scheduleBtn.classList.remove('active');
+
+  scheduleView.style.display='none';
+  calendarView.style.display='block';
+
+};
+
 </script>
 
 </body>
