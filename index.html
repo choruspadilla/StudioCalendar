@@ -38,18 +38,18 @@ body{
 h1{
   margin:0;
   font-size:96px;
-  line-height:.88;
-  font-weight:650;
+  line-height:.9;
+  font-weight:600;
   letter-spacing:-4px;
 }
 
 .segment{
+  display:inline-flex;
   margin-top:40px;
   margin-bottom:60px;
-  display:inline-flex;
+  padding:4px;
   background:var(--pill);
   border-radius:999px;
-  padding:4px;
 }
 
 .segment button{
@@ -63,7 +63,7 @@ h1{
 }
 
 .segment button.active{
-  background:white;
+  background:#fff;
   box-shadow:
     0 1px 2px rgba(0,0,0,.08),
     0 2px 8px rgba(0,0,0,.08);
@@ -78,8 +78,8 @@ h1{
 }
 
 .day-label{
-  font-size:42px;
-  font-weight:650;
+  font-size:40px;
+  font-weight:600;
   letter-spacing:-1px;
   margin-bottom:16px;
 }
@@ -94,13 +94,13 @@ h1{
 
 .time{
   color:var(--secondary);
-  font-weight:600;
   font-size:16px;
+  font-weight:500;
 }
 
 .title{
   font-size:28px;
-  font-weight:650;
+  font-weight:600;
   letter-spacing:-0.5px;
 }
 
@@ -109,6 +109,12 @@ h1{
   color:var(--secondary);
   font-size:16px;
 }
+
+.empty{
+  color:var(--secondary);
+}
+
+/* Calendar */
 
 .fc{
   width:100%;
@@ -119,14 +125,15 @@ h1{
 }
 
 .fc-toolbar-title{
-  font-size:42px !important;
-  font-weight:650 !important;
+  font-size:40px !important;
+  font-weight:600 !important;
   letter-spacing:-1px;
 }
 
 .fc-button{
   background:var(--red) !important;
   border:none !important;
+  box-shadow:none !important;
 }
 
 .fc-button:hover{
@@ -143,24 +150,45 @@ h1{
 }
 
 .fc-daygrid-day-number{
-  color:#000;
-  text-decoration:none;
+  color:#000 !important;
+  text-decoration:none !important;
 }
 
 .fc-daygrid-event{
   background:var(--red) !important;
   border:none !important;
-  padding:2px 4px;
+
+  color:white !important;
+
+  border-radius:8px !important;
+  padding:4px 8px !important;
+
+  font-size:13px !important;
+  font-weight:500 !important;
+}
+
+.fc-event-title{
+  color:white !important;
+  font-weight:500 !important;
+}
+
+.fc-event-time{
+  color:white !important;
+  font-weight:500 !important;
+}
+
+.fc-event-main{
+  color:white !important;
+}
+
+.fc-h-event{
+  border:none !important;
 }
 
 #accent{
   margin-top:40px;
   height:8px;
   background:var(--red);
-}
-
-.empty{
-  color:var(--secondary);
 }
 
 @media(max-width:700px){
@@ -170,7 +198,7 @@ h1{
   }
 
   .day-label{
-    font-size:30px;
+    font-size:28px;
   }
 
   .event{
@@ -209,6 +237,8 @@ h1{
 
 <script>
 
+let calendar;
+
 const scheduleBtn = document.getElementById('scheduleBtn');
 const calendarBtn = document.getElementById('calendarBtn');
 
@@ -240,6 +270,7 @@ function buildSchedule(events){
       '<p class="empty">No upcoming events.</p>';
 
     return;
+
   }
 
   const grouped = {};
@@ -248,8 +279,7 @@ function buildSchedule(events){
     .sort((a,b)=>new Date(a.start)-new Date(b.start))
     .forEach(event=>{
 
-      const key =
-        new Date(event.start).toDateString();
+      const key = new Date(event.start).toDateString();
 
       if(!grouped[key]){
         grouped[key] = [];
@@ -261,14 +291,10 @@ function buildSchedule(events){
 
   Object.keys(grouped).forEach(day=>{
 
-    const group =
-      document.createElement('div');
-
+    const group = document.createElement('div');
     group.className = 'day-group';
 
-    const heading =
-      document.createElement('div');
-
+    const heading = document.createElement('div');
     heading.className = 'day-label';
 
     heading.textContent =
@@ -285,15 +311,10 @@ function buildSchedule(events){
 
     grouped[day].forEach(event=>{
 
-      const start =
-        new Date(event.start);
+      const start = new Date(event.start);
+      const end = new Date(event.end);
 
-      const end =
-        new Date(event.end);
-
-      const item =
-        document.createElement('div');
-
+      const item = document.createElement('div');
       item.className = 'event';
 
       item.innerHTML = `
@@ -305,9 +326,7 @@ function buildSchedule(events){
         </div>
 
         <div>
-          <div class="title">
-            ${event.title}
-          </div>
+          <div class="title">${event.title}</div>
 
           <div class="range">
             ${start.toLocaleTimeString([],{
@@ -335,15 +354,14 @@ function buildSchedule(events){
 
 function buildCalendar(events){
 
-  const calendar =
-    new FullCalendar.Calendar(
-      document.getElementById('calendar'),
-      {
-        initialView:'dayGridMonth',
-        height:'auto',
-        events:events
-      }
-    );
+  calendar = new FullCalendar.Calendar(
+    document.getElementById('calendar'),
+    {
+      initialView:'dayGridMonth',
+      height:'auto',
+      events:events
+    }
+  );
 
   calendar.render();
 
@@ -366,6 +384,14 @@ calendarBtn.addEventListener('click',()=>{
 
   scheduleView.style.display='none';
   calendarView.style.display='block';
+
+  setTimeout(() => {
+
+    if(calendar){
+      calendar.updateSize();
+    }
+
+  }, 50);
 
 });
 
