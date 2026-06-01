@@ -32,83 +32,25 @@ button {
 <div id="calendar"></div>
 
 <script>
-const msalConfig = {
-  auth: {
-    clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
-    authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
-    redirectUri: "https://choruspadilla.github.io/StudioCalendar/"
-  }
-};
+console.log("SCRIPT LOADED");
 
-const msalInstance = new msal.PublicClientApplication(msalConfig);
+window.onload = function () {
 
-const loginRequest = {
-  scopes: ["User.Read", "Calendars.Read"]
-};
+  console.log("WINDOW READY");
 
-let calendar;
+  const btn = document.getElementById("loginBtn");
 
-document.getElementById("loginBtn").onclick = async () => {
-  document.getElementById("status").innerText = "Redirecting to Microsoft...";
-  await msalInstance.loginRedirect(loginRequest);
-};
-
-async function handleAuth() {
-
-  await msalInstance.initialize();
-
-  const result = await msalInstance.handleRedirectPromise();
-
-  if (result && result.account) {
-    msalInstance.setActiveAccount(result.account);
+  if (!btn) {
+    console.log("BUTTON NOT FOUND");
+    return;
   }
 
-  const account = msalInstance.getAllAccounts()[0];
-
-  if (!account) return;
-
-  msalInstance.setActiveAccount(account);
-
-  document.getElementById("status").innerText = "Fetching calendar...";
-
-  const token = await msalInstance.acquireTokenSilent({
-    ...loginRequest,
-    account
+  btn.addEventListener("click", function () {
+    console.log("CLICK FIRED");
+    alert("CLICK WORKS");
   });
 
-  const start = new Date();
-  const end = new Date();
-  end.setDate(end.getDate() + 60);
-
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token.accessToken}`
-      }
-    }
-  );
-
-  const data = await res.json();
-
-  const events = data.value.map(e => ({
-    title: e.subject,
-    start: e.start.dateTime,
-    end: e.end.dateTime
-  }));
-
-  calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
-    initialView: "dayGridMonth",
-    height: "auto",
-    events
-  });
-
-  calendar.render();
-
-  document.getElementById("status").innerText = "Loaded";
-}
-
-handleAuth();
+};
 </script>
 
 </body>
