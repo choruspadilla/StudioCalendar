@@ -91,11 +91,18 @@ h1{
   background:var(--red);
   color:#fff;
   border:none;
-  padding:12px 18px;
+  padding:14px 22px;
   border-radius:999px;
   font-weight:600;
+  font-size:16px;
   cursor:pointer;
   margin-top:20px;
+}
+
+#status{
+  margin-top:10px;
+  font-size:12px;
+  color:#888;
 }
 </style>
 </head>
@@ -106,6 +113,7 @@ h1{
 <h1>Studio<br>Schedule</h1>
 
 <button id="signinBtn">Sign in with Microsoft</button>
+<div id="status"></div>
 
 <div class="segment">
   <button id="scheduleBtn" class="active">Schedule</button>
@@ -127,100 +135,146 @@ const msalConfig = {
 };
 
 const msalInstance = new msal.PublicClientApplication(msalConfig);
-const scopes = ["User.Read","Calendars.Read"];
+
+const scopes = ["User.Read", "Calendars.Read"];
 
 let calendar;
 
-async function init(){
-  await msalInstance.initialize();
+/* ---------------- LOGIN ---------------- */
 
-  const response = await msalInstance.handleRedirectPromise();
-
-  if(response?.account){
-    msalInstance.setActiveAccount(response.account);
-    loadCalendar();
-  }
-
-  const accounts = msalInstance.getAllAccounts();
-  if(accounts.length){
-    msalInstance.setActiveAccount(accounts[0]);
-    loadCalendar();
-  }
-}
-
-document.getElementById("signinBtn").onclick = async () => {
-  await msalInstance.loginRedirect({ scopes });
+document.getElementById("signinBtn").onclick = () => {
+  document.getElementById("status").innerText = "Redirecting to Microsoft login...";
+  msalInstance.loginRedirect({ scopes });
 };
 
-async function getToken(){
-  const account = msalInstance.getActiveAccount();
-  return await msalInstance.acquireTokenSilent({ scopes, account });
-}
+/* ---------------- INIT ---------------- */
 
-async function loadCalendar(){
+async function init() {
+  try {
 
-  const token = await getToken();
+    await msalInstance.initialize();
 
-  const start = new Date();
-  const end = new Date();
-  end.setDate(end.getDate()+60);
+    const result = await msalInstance.handleRedirectPromise();
 
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token.accessToken}`
-      }
+    if (result?.account) {
+      msalInstance.setActiveAccount(result.account);
+      document.getElementById("status").innerText = "Logged in";
+      loadCalendar();
+      return;
     }
-  );
 
-  const data = await res.json();
+    const accounts = msalInstance.getAllAccounts();
 
-  const events = data.value.map(e => ({
-    title: e.subject,
-    start: e.start.dateTime,
-    end: e.end.dateTime
-  }));
+    if (accounts.length > 0) {
+      msalInstance.setActiveAccount(accounts[0]);
+      document.getElementById("status").innerText = "Session restored";
+      loadCalendar();
+    }
 
-  buildSchedule(events);
-  buildCalendar(events);
-
-  document.getElementById("signinBtn").style.display="none";
+  } catch (e) {
+    console.error(e);
+    document.getElementById("status").innerText = "Init error (check console)";
+  }
 }
+
+/* ---------------- TOKEN ---------------- */
+
+async function getToken() {
+  const account = msalInstance.getActiveAccount();
+
+  return await msalInstance.acquireTokenSilent({
+    scopes,
+    account
+  });
+}
+
+/* ---------------- CALENDAR ---------------- */
+
+async function loadCalendar() {
+
+  try {
+
+    const token = await getToken();
+
+    const start = new Date();
+    const end = new Date();
+    end.setDate(end.getDate() + 60);
+
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token.accessToken}`
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    const events = data.value.map(e => ({
+      title: e.subject,
+      start: e.start.dateTime,
+      end: e.end.dateTime
+    }));
+
+    buildSchedule(events);
+    buildCalendar(events);
+
+    document.getElementById("signinBtn").style.display = "none";
+    document.getElementById("status").innerText = "Calendar loaded";
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("status").innerText = "Failed to load calendar";
+  }
+}
+
+/* ---------------- UI ---------------- */
 
 function buildSchedule(events){
 
   const container = document.getElementById("scheduleView");
-  container.innerHTML="";
+  container.innerHTML = "";
 
-  const grouped={};
+  const grouped = {};
 
   events.sort((a,b)=>new Date(a.start)-new Date(b.start)).forEach(e=>{
-    const k=new Date(e.start).toDateString();
-    grouped[k]=grouped[k]||[];
+    const k = new Date(e.start).toDateString();
+    grouped[k] = grouped[k] || [];
     grouped[k].push(e);
   });
 
   Object.keys(grouped).forEach(day=>{
-    const div=document.createElement("div");
-    div.className="day-group";
+    const div = document.createElement("div");
+    div.className = "day-group";
 
-    const h=document.createElement("div");
-    h.className="day-label";
-    h.textContent=new Date(day).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+    const h = document.createElement("div");
+    h.className = "day-label";
+    h.textContent = new Date(day).toLocaleDateString("en-US", {
+      weekday:"long", month:"long", day:"numeric"
+    });
+
     div.appendChild(h);
 
     grouped[day].forEach(e=>{
-      const s=new Date(e.start);
-      const x=document.createElement("div");
-      x.className="event";
-      x.innerHTML=`
-        <div class="time">${s.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
+      const s = new Date(e.start);
+
+      const row = document.createElement("div");
+      row.className = "event";
+
+      row.innerHTML = `
+        <div class="time">${s.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</div>
         <div>
           <div class="title">${e.title}</div>
-          <div class="range">${s.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})} - ${new Date(e.end).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
-        </div>`;
-      div.appendChild(x);
+          <div class="range">
+            ${s.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}
+            –
+            ${new Date(e.end).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}
+          </div>
+        </div>
+      `;
+
+      div.appendChild(row);
     });
 
     container.appendChild(div);
@@ -228,30 +282,37 @@ function buildSchedule(events){
 }
 
 function buildCalendar(events){
-  calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
-    initialView:"dayGridMonth",
-    height:"auto",
-    events
-  });
+  calendar = new FullCalendar.Calendar(
+    document.getElementById("calendar"),
+    {
+      initialView: "dayGridMonth",
+      height: "auto",
+      events
+    }
+  );
   calendar.render();
 }
 
-document.getElementById("scheduleBtn").onclick=()=>{
+/* ---------------- TOGGLE ---------------- */
+
+document.getElementById("scheduleBtn").onclick = () => {
   scheduleBtn.classList.add("active");
   calendarBtn.classList.remove("active");
-  scheduleView.style.display="block";
-  calendarView.style.display="none";
+  scheduleView.style.display = "block";
+  calendarView.style.display = "none";
 };
 
-document.getElementById("calendarBtn").onclick=()=>{
+document.getElementById("calendarBtn").onclick = () => {
   calendarBtn.classList.add("active");
   scheduleBtn.classList.remove("active");
-  scheduleView.style.display="none";
-  calendarView.style.display="block";
+  scheduleView.style.display = "none";
+  calendarView.style.display = "block";
 };
 
-init();
-</script>
+/* ---------------- START ---------------- */
 
+init();
+
+</script>
 </body>
 </html>
