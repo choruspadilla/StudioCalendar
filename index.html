@@ -8,18 +8,39 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js"></script>
 
-<!-- ✅ MORE RELIABLE MSAL CDN (fixes your issue) -->
-<script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<!-- MSAL (reliable CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 
 <style>
-body { margin:0; font-family: -apple-system, sans-serif; padding:40px; }
-h1 { font-size:48px; }
-button {
-  background:#cc2229;color:white;border:none;
-  padding:12px 18px;border-radius:999px;
-  font-size:16px;cursor:pointer;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  padding: 40px;
 }
-#status { margin-top:10px; color:#666; }
+
+h1 {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+button {
+  background: #cc2229;
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#status {
+  margin-top: 10px;
+  color: #666;
+}
+
+#calendar {
+  margin-top: 30px;
+}
 </style>
 </head>
 
@@ -28,88 +49,117 @@ button {
 <h1>Studio Schedule</h1>
 
 <button id="loginBtn">Sign in with Microsoft</button>
-<div id="status">Loading...</div>
+<div id="status">Ready</div>
 
 <div id="calendar"></div>
 
 <script>
-const statusEl = document.getElementById("status");
+const msalConfig = {
+  auth: {
+    clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
+    authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
+    redirectUri: window.location.href
+  },
+  cache: {
+    cacheLocation: "localStorage",
+    storeAuthStateInCookie: true
+  }
+};
 
-function status(msg){
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+const loginRequest = {
+  scopes: ["User.Read", "Calendars.Read"]
+};
+
+let calendar;
+
+function setStatus(msg) {
   console.log(msg);
-  statusEl.innerText = msg;
+  document.getElementById("status").innerText = msg;
 }
 
-/* ----------------------------------------
-   HARD CHECK: MSAL LOADING
----------------------------------------- */
-setTimeout(() => {
+/* ---------------- LOGIN ---------------- */
 
-  if (!window.msal) {
-    status("MSAL failed to load (CDN blocked). Trying fallback...");
-
-    // fallback CDN injection
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js";
-
-    script.onload = initApp;
-    script.onerror = () => status("MSAL blocked completely on this network");
-
-    document.head.appendChild(script);
-
-  } else {
-    initApp();
+document.getElementById("loginBtn").onclick = async () => {
+  try {
+    setStatus("Redirecting to Microsoft login...");
+    await msalInstance.loginRedirect(loginRequest);
+  } catch (err) {
+    console.error(err);
+    setStatus("Login error");
   }
+};
 
-}, 500);
+/* ---------------- INIT ---------------- */
 
-/* ----------------------------------------
-   APP START
----------------------------------------- */
-function initApp() {
+async function init() {
+  try {
 
-  status("MSAL loaded");
+    await msalInstance.initialize();
 
-  const msalInstance = new msal.PublicClientApplication({
-    auth: {
-      clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
-      authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
-      redirectUri: window.location.href
-    },
-    cache: {
-      cacheLocation: "localStorage"
+    const result = await msalInstance.handleRedirectPromise();
+
+    if (result?.account) {
+      msalInstance.setActiveAccount(result.account);
     }
-  });
 
-  const loginRequest = {
-    scopes: ["User.Read", "Calendars.Read"]
-  };
+    const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
 
-  document.getElementById("loginBtn").onclick = async () => {
-    try {
-      status("Redirecting to Microsoft...");
-      await msalInstance.loginRedirect(loginRequest);
-    } catch (e) {
-      console.error(e);
-      status("Login error: " + e.message);
+    if (!account) {
+      setStatus("Not signed in");
+      return;
     }
-  };
 
-  msalInstance.handleRedirectPromise()
-    .then(result => {
-      if (result?.account) {
-        msalInstance.setActiveAccount(result.account);
-        status("Logged in: " + result.account.username);
-      } else {
-        status("Ready (not signed in)");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      status("Auth error");
+    msalInstance.setActiveAccount(account);
+
+    setStatus("Loading calendar...");
+
+    const token = await msalInstance.acquireTokenSilent({
+      ...loginRequest,
+      account
     });
 
+    const start = new Date();
+    const end = new Date();
+    end.setDate(end.getDate() + 60);
+
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token.accessToken}`
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    const events = (data.value || []).map(e => ({
+      title: e.subject,
+      start: e.start.dateTime,
+      end: e.end.dateTime
+    }));
+
+    calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+      initialView: "dayGridMonth",
+      height: "auto",
+      events
+    });
+
+    calendar.render();
+
+    setStatus("Calendar loaded");
+
+    document.getElementById("loginBtn").style.display = "none";
+
+  } catch (err) {
+    console.error(err);
+    setStatus("Error loading calendar");
+  }
 }
+
+init();
 </script>
 
 </body>
