@@ -8,41 +8,18 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js"></script>
 
-<!-- MSAL (loaded early, no race conditions) -->
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<!-- ✅ MORE RELIABLE MSAL CDN (fixes your issue) -->
+<script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 
 <style>
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: white;
-  color: black;
-  padding: 40px;
-}
-
-h1 {
-  font-size: 48px;
-  margin-bottom: 20px;
-}
-
+body { margin:0; font-family: -apple-system, sans-serif; padding:40px; }
+h1 { font-size:48px; }
 button {
-  background: #cc2229;
-  color: white;
-  border: none;
-  padding: 12px 18px;
-  border-radius: 999px;
-  font-size: 16px;
-  cursor: pointer;
+  background:#cc2229;color:white;border:none;
+  padding:12px 18px;border-radius:999px;
+  font-size:16px;cursor:pointer;
 }
-
-#status {
-  margin-top: 10px;
-  color: #666;
-}
-
-#calendar {
-  margin-top: 30px;
-}
+#status { margin-top:10px; color:#666; }
 </style>
 </head>
 
@@ -51,30 +28,47 @@ button {
 <h1>Studio Schedule</h1>
 
 <button id="loginBtn">Sign in with Microsoft</button>
-<div id="status"></div>
+<div id="status">Loading...</div>
 
 <div id="calendar"></div>
 
 <script>
-const status = document.getElementById("status");
+const statusEl = document.getElementById("status");
 
-function setStatus(msg) {
+function status(msg){
   console.log(msg);
-  status.innerText = msg;
+  statusEl.innerText = msg;
 }
 
-setStatus("Waiting for MSAL...");
+/* ----------------------------------------
+   HARD CHECK: MSAL LOADING
+---------------------------------------- */
+setTimeout(() => {
 
-function waitForMsal() {
-  if (window.msal) {
-    setStatus("MSAL loaded");
-    startApp();
+  if (!window.msal) {
+    status("MSAL failed to load (CDN blocked). Trying fallback...");
+
+    // fallback CDN injection
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js";
+
+    script.onload = initApp;
+    script.onerror = () => status("MSAL blocked completely on this network");
+
+    document.head.appendChild(script);
+
   } else {
-    setTimeout(waitForMsal, 100);
+    initApp();
   }
-}
 
-function startApp() {
+}, 500);
+
+/* ----------------------------------------
+   APP START
+---------------------------------------- */
+function initApp() {
+
+  status("MSAL loaded");
 
   const msalInstance = new msal.PublicClientApplication({
     auth: {
@@ -87,15 +81,17 @@ function startApp() {
     }
   });
 
+  const loginRequest = {
+    scopes: ["User.Read", "Calendars.Read"]
+  };
+
   document.getElementById("loginBtn").onclick = async () => {
     try {
-      setStatus("Starting login...");
-      await msalInstance.loginRedirect({
-        scopes: ["User.Read", "Calendars.Read"]
-      });
+      status("Redirecting to Microsoft...");
+      await msalInstance.loginRedirect(loginRequest);
     } catch (e) {
       console.error(e);
-      setStatus("Login error: " + e.message);
+      status("Login error: " + e.message);
     }
   };
 
@@ -103,19 +99,17 @@ function startApp() {
     .then(result => {
       if (result?.account) {
         msalInstance.setActiveAccount(result.account);
-        setStatus("Logged in as " + result.account.username);
+        status("Logged in: " + result.account.username);
       } else {
-        setStatus("Ready (not signed in)");
+        status("Ready (not signed in)");
       }
     })
     .catch(err => {
       console.error(err);
-      setStatus("Auth error");
+      status("Auth error");
     });
 
 }
-
-waitForMsal();
 </script>
 
 </body>
