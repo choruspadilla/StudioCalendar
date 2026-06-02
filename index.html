@@ -31,66 +31,38 @@ button {
 
 <div id="calendar"></div>
 <script>
-const msalConfig = {
-  auth: {
-    clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
-    authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
-    redirectUri: "https://choruspadilla.github.io/StudioCalendar/"
-  },
-  cache: {
-    cacheLocation: "localStorage",
-    storeAuthStateInCookie: true
+console.log("SCRIPT STARTED");
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  console.log("BUTTON CLICKED");
+
+  if (!window.msal) {
+    alert("MSAL NOT LOADED");
+    return;
   }
-};
 
-const msalInstance = new msal.PublicClientApplication(msalConfig);
+  alert("MSAL EXISTS - TRYING LOGIN");
 
-const loginRequest = {
-  scopes: ["User.Read", "Calendars.Read"]
-};
-
-function init() {
-
-  console.log("INIT RUNNING");
-
-  msalInstance.handleRedirectPromise()
-    .then(result => {
-
-      console.log("REDIRECT RESULT:", result);
-
-      if (result?.account) {
-        msalInstance.setActiveAccount(result.account);
-        loadCalendar();
-        return;
+  try {
+    const msalInstance = new msal.PublicClientApplication({
+      auth: {
+        clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
+        authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
+        redirectUri: window.location.href
       }
-
-      const accounts = msalInstance.getAllAccounts();
-
-      if (accounts.length > 0) {
-        msalInstance.setActiveAccount(accounts[0]);
-        loadCalendar();
-      }
-
-    })
-    .catch(err => {
-      console.error("AUTH ERROR:", err);
     });
 
-}
+    await msalInstance.loginPopup({
+      scopes: ["User.Read", "Calendars.Read"]
+    });
 
-document.getElementById("loginBtn").onclick = () => {
-  console.log("LOGIN CLICK");
-  msalInstance.loginRedirect(loginRequest);
-};
+    alert("LOGIN SUCCESS");
 
-async function loadCalendar() {
-  document.getElementById("status").innerText = "Logged in (token step next)";
-
-  const account = msalInstance.getActiveAccount();
-  console.log("ACCOUNT:", account);
-}
-
-init();
+  } catch (e) {
+    console.error(e);
+    alert("LOGIN ERROR: " + e.message);
+  }
+});
 </script>
 
 </body>
