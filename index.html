@@ -56,18 +56,27 @@ button {
 <div id="calendar"></div>
 
 <script>
-window.addEventListener("load", () => {
+const status = document.getElementById("status");
 
-  const status = document.getElementById("status");
+function setStatus(msg) {
+  console.log(msg);
+  status.innerText = msg;
+}
 
-  function log(msg) {
-    console.log(msg);
-    status.innerText = msg;
+setStatus("Waiting for MSAL...");
+
+function waitForMsal() {
+  if (window.msal) {
+    setStatus("MSAL loaded");
+    startApp();
+  } else {
+    setTimeout(waitForMsal, 100);
   }
+}
 
-  log("Initializing...");
+function startApp() {
 
-  const msalConfig = {
+  const msalInstance = new msal.PublicClientApplication({
     auth: {
       clientId: "c0b75d54-181c-48ea-afeb-1329b55a6a33",
       authority: "https://login.microsoftonline.com/b0f2d090-4ae0-46b4-b43d-2e3fd2aadf5f",
@@ -76,113 +85,37 @@ window.addEventListener("load", () => {
     cache: {
       cacheLocation: "localStorage"
     }
-  };
-
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  const loginRequest = {
-    scopes: ["User.Read", "Calendars.Read"]
-  };
-
-  async function initAuth() {
-
-    try {
-
-      await msalInstance.initialize();
-
-      const result = await msalInstance.handleRedirectPromise();
-
-      if (result?.account) {
-        msalInstance.setActiveAccount(result.account);
-        loadCalendar();
-        return;
-      }
-
-      const accounts = msalInstance.getAllAccounts();
-
-      if (accounts.length > 0) {
-        msalInstance.setActiveAccount(accounts[0]);
-        loadCalendar();
-      }
-
-    } catch (e) {
-      console.error(e);
-      log("Auth init error");
-    }
-  }
-
-  document.getElementById("loginBtn").addEventListener("click", async () => {
-
-    try {
-      log("Redirecting to Microsoft...");
-      await msalInstance.loginRedirect(loginRequest);
-    } catch (e) {
-      console.error(e);
-      log("Login error");
-    }
-
   });
 
-  async function getToken() {
-
-    const account = msalInstance.getActiveAccount();
-
-    return await msalInstance.acquireTokenSilent({
-      ...loginRequest,
-      account
-    });
-
-  }
-
-  async function loadCalendar() {
-
+  document.getElementById("loginBtn").onclick = async () => {
     try {
-
-      log("Loading calendar...");
-
-      const token = await getToken();
-
-      const start = new Date();
-      const end = new Date();
-      end.setDate(end.getDate() + 60);
-
-      const res = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token.accessToken}`
-          }
-        }
-      );
-
-      const data = await res.json();
-
-      const events = data.value.map(e => ({
-        title: e.subject,
-        start: e.start.dateTime,
-        end: e.end.dateTime
-      }));
-
-      new FullCalendar.Calendar(document.getElementById("calendar"), {
-        initialView: "dayGridMonth",
-        height: "auto",
-        events
-      }).render();
-
-      log("Calendar loaded");
-
-      document.getElementById("loginBtn").style.display = "none";
-
+      setStatus("Starting login...");
+      await msalInstance.loginRedirect({
+        scopes: ["User.Read", "Calendars.Read"]
+      });
     } catch (e) {
       console.error(e);
-      log("Calendar load failed");
+      setStatus("Login error: " + e.message);
     }
+  };
 
-  }
+  msalInstance.handleRedirectPromise()
+    .then(result => {
+      if (result?.account) {
+        msalInstance.setActiveAccount(result.account);
+        setStatus("Logged in as " + result.account.username);
+      } else {
+        setStatus("Ready (not signed in)");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      setStatus("Auth error");
+    });
 
-  initAuth();
+}
 
-});
+waitForMsal();
 </script>
 
 </body>
